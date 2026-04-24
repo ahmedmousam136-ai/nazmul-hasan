@@ -1,862 +1,962 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Menu, 
-  X, 
-  Search, 
-  CircleDollarSign, 
-  ShieldCheck, 
-  Rocket, 
-  Briefcase,
-  Layers,
-  ArrowUpRight,
-  TrendingUp,
-  HelpCircle,
-  Mail,
-  Shield,
-  FileText
-} from 'lucide-react';
-
-// --- Types ---
-type Language = 'bn' | 'hi' | 'en';
-
-const formatDigit = (num: number, lang: Language): string => {
-  const digitsMap: Record<Language, string[]> = {
-    bn: ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'],
-    hi: ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'], // Devanagari numerals are the same as Bengali in some fonts, but let's be safe
-    en: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
-  };
-
-  // Standard Hindi (Devanagari) digits
-  const hiDigits = ['০', '१', '२', '३', '४', '५', '६', '७', '৮', '९'];
-  // Wait, let's just use standard for now or provide correct ones.
-  // Actually, for quality, let's use the correct ones:
-  const maps: Record<Language, string[]> = {
-    bn: ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'],
-    hi: ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'],
-    en: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
-  };
-
-  return num.toString().split('').map(d => maps[lang][parseInt(d)] || d).join('');
-};
-
-interface Content {
-  nav: {
-    philosophy: string;
-    services: string;
-    portfolio: string;
-    process: string;
-    tech: string;
-    trust: string;
-    faq: string;
-    contact: string;
-  };
-  hero: {
-    badge: string;
-    title: string;
-    description: string;
-    cta: string;
-    archTitle: string;
-    subTitle: string;
-  };
-  marquee: string;
-  philosophy: {
-    quote: string;
-    title: string;
-    text: string;
-  };
-  services: {
-    title: string;
-    items: {
-      title: string;
-      desc: string;
-      tag: string;
-    }[];
-  };
-  portfolio: {
-    title: string;
-    items: {
-      title: string;
-      desc: string;
-      tag: string;
-    }[];
-  };
-  process: {
-    title: string;
-    steps: {
-      title: string;
-      desc: string;
-    }[];
-  };
-  tech: string;
-  trust: {
-    title: string;
-    items: {
-      title: string;
-      desc: string;
-    }[];
-  };
-  faq: {
-    title: string;
-    items: {
-      q: string;
-      a: string;
-    }[];
-  };
-  contact: {
-    title: string;
-    subtitle: string;
-    labels: {
-      name: string;
-      email: string;
-      message: string;
-      submit: string;
-    };
-    msme: string;
-    gst: string;
-  };
-}
-
-// --- Content Data ---
-const translations: Record<Language, Content> = {
-  bn: {
-    nav: {
-      philosophy: 'দর্শন',
-      services: 'পরিষেবাদি',
-      portfolio: 'নির্বাচিত কাজ',
-      process: 'আমাদের প্রক্রিয়া',
-      tech: 'প্রযুক্তি',
-      trust: 'কেন বিশ্বাস করবেন?',
-      faq: 'জিজ্ঞাস্য',
-      contact: 'যোগাযোগ',
-    },
-    hero: {
-      badge: 'Made in Bengal ৾ Crafted for the World',
-      title: 'ঐতিহ্যের মাটি থেকে ডিজিটাল শিল্প।',
-      description: 'পশ্চিমবঙ্গের শৈল্পিক ঐতিহ্যের বুক থেকে জন্ম নেওয়া এক ওয়েব ইঞ্জিনিয়ারিং স্টুডিও। আমরা শুধু ওয়েবসাইট বানাই না, একজন বাঙালি শিল্পীর পরম মমতায় আপনার ব্যবসাকে ডিজিটাল জগতে নির্ভরযোগ্যভাবে গড়ে তুলি।',
-      cta: 'আমাদের সাথে শুরু করুন',
-      archTitle: 'শিল্প + প্রযুক্তি',
-      subTitle: 'ডিজিটাল কারিগর',
-    },
-    marquee: 'বাংলার ডিজিটাল নবজাগরণ',
-    philosophy: {
-      quote: 'প্রযুক্তি যদি হয় ক্যানভাস, তবে ডিজাইন হলো আমাদের তুলির আঁচড়।',
-      title: 'আমাদের দর্শন',
-      text: 'আমরা বিশ্বাস করি যে প্রতিটি ব্যবসার একটি নিজস্ব এবং অনন্য গল্প আছে। আমাদের কাজ হল সেই গল্পটিকে গভীর শৈল্পিক বোধ এবং নিখুঁত প্রযুক্তির মাধ্যমে ইন্টারনেটের জগতে ফুটিয়ে তোলা। পশ্চিমবঙ্গের সাংস্কৃতিক ঐতিহ্য থেকে অনুপ্রেরণা নিয়ে আমরা এমন ওয়েবসাইট তৈরি করি যা কেবল কাজই করে না, বরং আপনার গ্রাহকের হৃদয় ছুঁয়ে যায়।',
-    },
-    services: {
-      title: 'আমাদের কারিগরী দক্ষতা',
-      items: [
-        { title: 'নকশা', desc: 'বাংলার আলপনার মতোই দৃষ্টিনন্দন ইন্টারফেস। আমরা আপনার ব্র্যান্ডের সৌন্দর্যকে ফুটিয়ে তুলি আধুনিক ডিজাইনের মাধ্যমে।', tag: 'Design UI / UX' },
-        { title: 'প্রকৌশল', desc: 'হাওড়া ব্রিজের মতো শক্তিশালী পরিকাঠামো। আমরা অত্যন্ত সুরক্ষিত, আধুনিক এবং ত্রুটিহীন ওয়েব আর্কিটেকচার তৈরি করি।', tag: 'Web Architecture' },
-        { title: 'প্রসার', desc: 'আপনার ব্যবসাকে শুধু কলকাতাতেই নয়, বরং ইন্টারনেটের বিশাল জগতে দেশ ও দেশের বাইরে প্রসারিত করার শক্তিশালী কৌশল।', tag: 'Scale & SEO' },
-      ],
-    },
-    portfolio: {
-      title: 'নির্বাচিত কাজ',
-      items: [
-        { title: 'ই-কমার্স প্ল্যাটফর্ম', desc: 'উচ্চ গতির অনলাইন স্টোর। নিরাপদ পেমেন্ট গেটওয়ে এবং ইনভেন্টরি ম্যানেজমেন্ট সহ।', tag: 'E-COMMERCE' },
-        { title: 'কর্পোরেট ওয়েবসাইট', desc: 'আধুনিক ব্র্যান্ডিং সহ পেশাদার এবং রেসপন্সিভ কোম্পানি পোর্টফোলিও।', tag: 'CORPORATE' },
-        { title: 'কাস্টম ওয়েব অ্যাপ্লিকেশন', desc: 'জটিল ডেটা পরিচালনা করার জন্য কাস্টম ড্যাশবোর্ড এবং ক্লাউড সমাধান।', tag: 'WEB APP' },
-      ],
-    },
-    process: {
-      title: 'নির্মাণ প্রণালী',
-      steps: [
-        { title: 'অনুসন্ধান', desc: 'আপনার ব্র্যান্ডের শিকড় এবং লক্ষ্য গভীরভাবে বোঝা এবং শিল্পের ভিত্তি নিয়ে গবেষণা করা।' },
-        { title: 'মাইলফলক পেমেন্ট', desc: 'ঝুঁকিমুক্ত উন্নয়ন: আপনি প্রতিটি পর্যায়ে কাজের অনুমোদন দিলে তবেই আমরা পেমেন্ট নিয়ে থাকি।' },
-        { title: 'নিরাপদ উন্নয়ন', desc: 'কঠোর এনক্রিপশন (SSL) ব্যবহার করে আধুনিক ডিজাইনের সাথে আপনার ধারণাকে বাস্তবে রূপ দেওয়া।' },
-        { title: 'সাইট উন্মোচন', desc: 'বিশ্বের কাছে আপনার সাইটটি প্রকাশ করা এবং ১০০% মালিকানা সহ আপনাকে হস্তান্তর করা।' },
-      ],
-    },
-    tech: 'প্রযুক্তির ভাণ্ডার',
-    trust: {
-      title: 'কেন আমাদের উপর আস্থা রাখবেন?',
-      items: [
-        { title: 'যাচাইকৃত এবং আইনী', desc: 'একটি বৈধ জিএসটিআইএন (GSTIN) সহ সরকার নিবন্ধিত এমএসএমই (MSME)। আমরা একটি কর-অনুগত পেশাদার সংস্থা।', },
-        { title: 'এসএসএল সুরক্ষিত', desc: 'আপনার ডেটা সুরক্ষিত রাখতে এবং গুগল র‍্যাঙ্কিং বাড়াতে আমাদের প্রতিটি সাইটে এসএসএল (SSL) এনক্রিপশন থাকে।', },
-        { title: 'জিরো-রিস্ক ওয়ার্কফ্লো', desc: 'মাইলফলক অনুযায়ী পেমেন্ট। প্রতিটি ধাপে কাজ অনুমোদনের পরেই আপনি পেমেন্ট করবেন।', },
-        { title: 'সম্পূর্ণ মালিকানা', desc: 'কাজ শেষে কোড এবং সম্পদের ১০০% মালিকানা আপনার। কোনো লুকানো চার্জ বা ভেন্ডর লক-ইন নেই।', },
-      ],
-    },
-    faq: {
-      title: 'সচরাচর জিজ্ঞাস্য',
-      items: [
-        { q: 'একটি ওয়েবসাইট তৈরি করতে কত সময় লাগে?', a: 'সাধারণত একটি প্রজেক্ট ২ থেকে ৪ সপ্তাহ সময় নেয়, যা আপনার ওয়েবসাইটের ফিচার ও জটিলার উপর নির্ভর করে।' },
-        { q: 'আপনারা কি ওয়েবসাইট লঞ্চ করার পর সাহায্য করেন?', a: 'হ্যাঁ, আমরা ওয়েবসাইট লঞ্চ করার পরেও পূর্ণ রক্ষণাবেক্ষণ সহায়তা প্রদান করি।' },
-        { q: 'আপনারা কি ডোমেন এবং হোস্টিং দেন?', a: 'হ্যাঁ, আমরা আপনাকে সেরা হোস্টিং বেছে নিতে সাহায্য করি এবং পুরো সেটআপ আমরাই করে থাকি।' },
-      ],
-    },
-    contact: {
-      title: 'আমাদের সাথে যুক্ত হোন',
-      subtitle: 'আপনার প্রকল্প বা ধারণা নিয়ে আলোচনা করতে আমাদের বার্তা পাঠান।',
-      labels: {
-        name: 'আপনার নাম',
-        email: 'আপনার ইমেইল',
-        message: 'আপনার গল্প বা প্রজেক্টের বিস্তারিত',
-        submit: 'বার্তা পাঠান',
-      },
-      msme: 'সরকার নিবন্ধিত MSME',
-      gst: 'জিএসটিআইএন',
-    }
-  },
-  hi: {
-    nav: {
-      philosophy: 'दर्शन',
-      services: 'सेवाएं',
-      portfolio: 'चुनिंदा काम',
-      process: 'हमारी प्रक्रिया',
-      tech: 'तकनीक',
-      trust: 'हम पर भरोसा क्यों करें?',
-      faq: 'सामान्य प्रश्न',
-      contact: 'संपर्क',
-    },
-    hero: {
-      badge: 'Made in Bengal ৾ Crafted for the World',
-      title: 'विरासत की मिट्टी से डिजिटल कला।',
-      description: 'पश्चिम बंगाल की कलात्मक विरासत के बीच पैदा हुआ एक वेब इंजीनियरिंग स्टूडियो। हम न केवल वेबसाइट बनाते हैं, बल्कि एक बंगाली कलाकार के समर्पण के साथ आपके व्यवसाय को डिजिटल दुनिया में मज़बूती से ढालते हैं।',
-      cta: 'हमारे साथ शुरुआत करें',
-      archTitle: 'कला + तकनीक',
-      subTitle: 'डिजिटल शिल्पकार',
-    },
-    marquee: 'बंगाल का डिजिटल पुनर्जागरण',
-    philosophy: {
-      quote: 'तकनीक यदि कैनवास है, तो डिज़ाइन हमारे ब्रश का स्पर्श है।',
-      title: 'हमारा दर्शन',
-      text: 'हमारा मानना ​​है कि हर व्यवसाय की अपनी एक अनूठी कहानी होती है। हमारा काम उस कहानी को गहरी कलात्मक समझ और सटीक तकनीक के माध्यम से इंटरनेट की दुनिया में उतारना है। पश्चिम बंगाल की सांस्कृतिक विरासत से प्रेरणा लेकर, हम ऐसी वेबसाइट बनाते हैं जो न केवल काम करती हैं, बल्कि आपके ग्राहक के दिलों को भी छू जाती हैं।',
-    },
-    services: {
-      title: 'हमारा शिल्प कौशल',
-      items: [
-        { title: 'रूपांकन', desc: 'बंगाल की अल्पना की तरह ही आकर्षक इंटरफेस। हम आधुनिक डिजाइन के माध्यम से आपके ब्रांड की सुंदरता को निखारते हैं।', tag: 'Design UI / UX' },
-        { title: 'इंजीनियरिंग', desc: 'हावड़ा ब्रिज की तरह मजबूत बुनियादी ढांचा। हम अत्यधिक सुरक्षित, आधुनिक और त्रुटिहीन वेब आर्किटेक्चर बनाते हैं।', tag: 'Web Architecture' },
-        { title: 'विस्तार', desc: 'आपके व्यवसाय को न केवल कोलकाता में, बल्कि इंटरनेट की विशाल दुनिया में देश और विदेश तक फैलाने की मजबूत रणनीति।', tag: 'Scale & SEO' },
-      ],
-    },
-    portfolio: {
-      title: 'चुनिंदा काम',
-      items: [
-        { title: 'ई-कॉमर्स प्लेटफॉर्म', desc: 'सुरक्षित भुगतान और इन्वेंटरी प्रबंधन के साथ हाई-स्पीड ऑनलाइन स्टोर।', tag: 'E-COMMERCE' },
-        { title: 'कॉर्पोरेट वेबसाइट', desc: 'आधुनिक ब्रांडिंग के साथ पेशेवर और उत्तरदायी कंपनी पोर्टफोलियो।', tag: 'CORPORATE' },
-        { title: 'कस्टम वेब एप्लीकेशन', desc: 'जटिल डेटा प्रबंधित करने के लिए कस्टम डैशबोर्ड और क्लाउड समाधान।', tag: 'WEB APP' },
-      ],
-    },
-    process: {
-      title: 'निर्माण प्रक्रिया',
-      steps: [
-        { title: 'अनुसंधान', desc: 'आपके ब्रांड की जड़ों और लक्ष्यों को गहराई से समझना और उद्योग के आधार पर शोध करना।' },
-        { title: 'माइलस्टोन भुगतान', desc: 'जोखिम-मुक्त विकास: आप प्रत्येक चरण में काम को मंज़ूर करने के बाद ही भुगतान करते हैं।' },
-        { title: 'सुरक्षित विकास', desc: 'सख्त एन्क्रिप्शन (SSL) का उपयोग करके आधुनिक डिजाइन के साथ आपके विचारों को साकार करना।' },
-        { title: 'साइट लॉन्च', desc: 'दुनिया के सामने अपनी साइट प्रकाशित करना और 100% स्वामित्व के साथ आपको सौंपना।' },
-      ],
-    },
-    tech: 'तकनीकी शस्त्रागार',
-    trust: {
-      title: 'हम पर भरोसा क्यों करें?',
-      items: [
-        { title: 'सत्यापित और कानूनी', desc: 'एक वैध GSTIN के साथ सरकार पंजीकृत MSME। हम एक कर-अनुपालन, पेशेवर इकाई हैं।' },
-        { title: 'SSL सुरक्षित', desc: 'आपके डेटा की सुरक्षा और आपके Google रैंकिंग को बढ़ाने के लिए हमारी हर साइट में SSL एन्क्रिप्शन शामिल है।' },
-        { title: 'शून्य-जोखिम वर्कफ़्लो', desc: 'माइलस्टोन के अनुसार भुगतान। प्रत्येक चरण में काम को मंज़ूरी देने के बाद ही आप भुगतान करते हैं।' },
-        { title: 'पूर्ण स्वामित्व', desc: 'काम पूरा होने पर आप कोड और संपत्तियों के 100% मालिक होंगे। कोई छिपी हुई फीस या वेंडर लॉक-इन नहीं।' },
-      ],
-    },
-    faq: {
-      title: 'सामान्य प्रश्न',
-      items: [
-        { q: 'वेबसाइट बनाने में कितना समय लगता है?', a: 'आमतौर पर एक प्रोजेक्ट में 2 से 4 सप्ताह लगते हैं, जो आपकी वेबसाइट की विशेषताओं और जटिलता पर निर्भर करता है।' },
-        { q: 'क्या आप वेबसाइट लॉन्च होने के बाद सहायता प्रदान करते हैं?', a: 'हाँ, हम वेबसाइट लॉन्च होने के बाद पूर्ण रखरखाव सहायता प्रदान करते हैं।' },
-        { q: 'क्या आप डोमेन और होस्टिंग को संभालते हैं?', a: 'हाँ, हम आपको सबसे अच्छी होस्टिंग चुनने में मार्गदर्शन करते हैं और आपके लिए पूरा सेटअप संभालते हैं।' },
-      ],
-    },
-    contact: {
-      title: 'हमसे जुड़ें',
-      subtitle: 'अपने प्रोजेक्ट या विचार पर चर्चा करने के लिए हमें एक संदेश भेजें।',
-      labels: {
-        name: 'आपका नाम',
-        email: 'आपका ईमेल',
-        message: 'आपकी कहानी या प्रोजेक्ट का विवरण',
-        submit: 'संदेश भेजें',
-      },
-      msme: 'सरकार पंजीकृत MSME',
-      gst: 'जीएसटीआईएन',
-    }
-  },
-  en: {
-    nav: {
-      philosophy: 'Philosophy',
-      services: 'Services',
-      portfolio: 'Portfolio',
-      process: 'Process',
-      tech: 'Tech',
-      trust: 'Why Trust Us?',
-      faq: 'FAQ',
-      contact: 'Contact',
-    },
-    hero: {
-      badge: 'Made in Bengal ৾ Crafted for the World',
-      title: 'Digital Craft from Heritage Soil.',
-      description: "A web engineering studio born from the artistic legacy of West Bengal. We don't just build websites; we reliably forge your business in the digital world with the devotion of a true artisan.",
-      cta: 'Start Building',
-      archTitle: 'ART + TECH',
-      subTitle: 'Digital Artisan',
-    },
-    marquee: 'DIGITAL RENAISSANCE OF BENGAL',
-    philosophy: {
-      quote: 'If technology is the canvas, design is our brushstroke.',
-      title: 'Our Philosophy',
-      text: 'We believe every business has its own unique story. Our mission is to manifest that story in the digital realm through deep artistic sensibility and flawless technology. Inspired by West Bengals rich cultural heritage, we build websites that do more than function—they touch your customers heart.',
-    },
-    services: {
-      title: 'Our Craftsmanship',
-      items: [
-        { title: 'Design', desc: 'Aesthetic interfaces inspired by Bengals Alpana. We elevate your brand’s beauty through flawless modern design.', tag: 'Design UI / UX' },
-        { title: 'Engineering', desc: 'Infrastructure as robust as the Howrah Bridge. We build secure, modern, and flawless web architectures.', tag: 'Web Architecture' },
-        { title: 'Scale', desc: 'Powerful strategies to expand your business from Kolkata to the global digital landscape.', tag: 'Scale & SEO' },
-      ],
-    },
-    portfolio: {
-      title: 'Selected Works',
-      items: [
-        { title: 'E-Commerce Platform', desc: 'High-speed online store featuring secure payments and inventory management.', tag: 'E-COMMERCE' },
-        { title: 'Corporate Website', desc: 'Professional and responsive company portfolio with modern branding.', tag: 'CORPORATE' },
-        { title: 'Custom Web App', desc: 'Custom dashboards and cloud solutions for managing complex data.', tag: 'WEB APP' },
-      ],
-    },
-    process: {
-      title: 'The Crafting Process',
-      steps: [
-        { title: 'Discovery', desc: 'Deeply understanding your brands roots, goals, and researching the industrial landscape.' },
-        { title: 'Milestone Pay', desc: 'Zero-risk development: Pay incrementally. Release funds only after you approve the work.' },
-        { title: 'Secure Dev', desc: 'Transforming your vision into reality with flawless coding, safeguarded by SSL Encryption.' },
-        { title: 'Launch & SEO', desc: 'Releasing your platform to the world and handing over 100% ownership of everything.' },
-      ],
-    },
-    tech: 'The Tech Arsenal',
-    trust: {
-      title: 'Why Trust Us?',
-      items: [
-        { title: 'Verified & Legal', desc: 'A Govt. Registered MSME with a valid GSTIN. We are a tax-compliant, professional entity.' },
-        { title: 'SSL Secure', desc: 'Every site we build includes SSL Encryption to protect your data and boost your rank.' },
-        { title: 'Zero-Risk', desc: 'Pay in Milestones. You only release payment once you approve the work at each stage.' },
-        { title: 'Full Ownership', desc: 'You own 100% of the code and assets upon completion. No hidden fees.' },
-      ],
-    },
-    faq: {
-      title: 'FAQ',
-      items: [
-        { q: 'How long does it take?', a: 'Typically a project takes 2 to 4 weeks, depending on the features and complexity.' },
-        { q: 'Do you provide support?', a: 'Yes, we provide full maintenance and continuous support even after launch.' },
-        { q: 'Do you handle hosting?', a: 'Yes, we guide you in choosing the best provider and handle the entire technical setup.' },
-      ],
-    },
-    contact: {
-      title: 'Connect With Us',
-      subtitle: 'Send us a message to discuss your project or ideas.',
-      labels: {
-        name: 'Your Name',
-        email: 'Your Email',
-        message: 'Your Story Details',
-        submit: 'Send Message',
-      },
-      msme: 'A Govt. Registered MSME',
-      gst: 'Verified GSTIN',
-    }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Modern School</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0a1f44;
+    --navy-light: #152d5e;
+    --gold: #c8a84b;
+    --gold-light: #e8c96a;
+    --gold-pale: #f5ecd0;
+    --white: #ffffff;
+    --off-white: #faf9f6;
+    --gray: #6b7280;
+    --light-gray: #f3f4f6;
+    --text: #1a202c;
   }
-};
 
-// --- Main App Component ---
-export default function App() {
-  const [lang, setLang] = useState<Language>('bn');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  const t = translations[lang];
+  html { scroll-behavior: smooth; }
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-      const scrolledVal = (winScroll / height) * 100;
-      setScrollProgress(scrolledVal);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  body {
+    font-family: 'DM Sans', sans-serif;
+    color: var(--text);
+    background: var(--white);
+    overflow-x: hidden;
+  }
 
-  const toggleLang = (target: Language) => {
-    setLang(target);
-  };
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 0 5%;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 72px;
+    background: rgba(10,31,68,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(200,168,75,0.2);
+  }
 
-  const menuVariants = {
-    closed: { x: '-100%' },
-    open: { x: 0 },
-  };
+  .nav-logo {
+    display: flex; align-items: center; gap: 12px;
+    text-decoration: none;
+  }
 
-  return (
-    <div className={`min-h-screen bg-canvas selection:bg-terracotta selection:text-canvas ${
-      lang === 'bn' ? 'font-bengali' : lang === 'hi' ? 'font-hindi' : 'font-serif'
-    }`}>
-      
-      {/* Background Watermark */}
-      <div className="fixed top-1/2 -left-32 -translate-y-1/2 -rotate-90 pointer-events-none opacity-[0.03] z-0 select-none whitespace-nowrap text-[15vw] font-black text-ink font-bengali">
-        কলকাতা
-      </div>
+  .nav-logo-icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 900;
+    color: var(--navy);
+    font-family: 'Playfair Display', serif;
+  }
 
-      <div className="max-w-[1400px] mx-auto border-x-2 border-ink bg-canvas relative z-10 min-h-screen">
-        
-        {/* Navigation */}
-        <nav className={`sticky top-0 z-50 flex items-center justify-between px-4 md:px-10 py-5 border-b-2 border-ink bg-canvas transition-shadow ${scrolled ? 'shadow-md' : ''}`}>
-          {/* Scroll Progress Bar */}
-          <div className="absolute top-0 left-0 h-1.5 bg-terracotta z-40 transition-all duration-100 ease-out" style={{ width: `${scrollProgress}%` }} />
-          
-          <div className="flex items-center gap-3 sm:gap-5 flex-shrink">
-            <button 
-              onClick={() => setIsMenuOpen(true)}
-              className="p-1 hover:scale-110 transition-transform cursor-pointer"
-            >
-              <Menu size={24} className="md:w-7 md:h-7" />
-            </button>
-            <div className="flex flex-col">
-              <a href="#" className="flex items-center gap-1.5 sm:gap-2 text-xl md:text-2xl font-bold tracking-tight text-ink group whitespace-nowrap">
-                <span className="font-extrabold group-hover:text-terracotta transition-colors">
-                  {lang === 'bn' ? 'কোয়ান্টাম' : lang === 'hi' ? 'क्वांटम' : 'Quantum'}
-                </span>
-                <span className="font-tech text-terracotta group-hover:text-mustard group-hover:-translate-y-1 group-hover:rotate-6 transition-all duration-300 inline-block">
-                  Pixel
-                </span>
-              </a>
-              <div className="flex gap-2 mt-0.5">
-                <div className="bg-mustard/10 border border-mustard/30 px-1.5 py-0.5 text-[7px] md:text-[9px] font-tech font-bold text-ink/80 uppercase whitespace-nowrap rounded">
-                  {lang === 'bn' ? 'ইউডিয়াম' : lang === 'hi' ? 'उद्यम' : 'UDYAM'}: WB-18-0186128
-                </div>
-                <div className="bg-indigo/10 border border-indigo/30 px-1.5 py-0.5 text-[7px] md:text-[9px] font-tech font-bold text-ink/80 uppercase whitespace-nowrap rounded">
-                  {lang === 'bn' ? 'জিএসটি' : lang === 'hi' ? 'जीएसटी' : 'GST'}: 19BDYPL9210K1ZR
-                </div>
-              </div>
-            </div>
-          </div>
+  .nav-logo-text { color: var(--white); }
+  .nav-logo-text .school-name { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; display: block; line-height: 1.1; }
+  .nav-logo-text .school-tag { font-size: 0.65rem; color: var(--gold); letter-spacing: 0.12em; text-transform: uppercase; }
 
-          <div className="flex border-2 border-ink bg-canvas overflow-hidden shadow-[2px_2px_0px_var(--color-mustard)] sm:shadow-[4px_4px_0px_var(--color-mustard)] flex-shrink-0">
-            {(['bn', 'hi', 'en'] as Language[]).map((l) => (
-              <button
-                key={l}
-                onClick={() => toggleLang(l)}
-                className={`px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-bold transition-colors border-r-2 last:border-r-0 border-ink ${
-                  lang === l ? 'bg-ink text-canvas' : 'bg-transparent text-ink hover:bg-mustard/10'
-                }`}
-              >
-                <span className="hidden sm:inline">
-                  {l === 'en' ? 'EN' : l === 'bn' ? 'বাংলা' : 'हिंदी'}
-                </span>
-                <span className="sm:hidden uppercase">
-                  {l}
-                </span>
-              </button>
-            ))}
-          </div>
-        </nav>
+  .nav-links { display: flex; align-items: center; gap: 36px; list-style: none; }
+  .nav-links a { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.88rem; font-weight: 500; letter-spacing: 0.03em; transition: color .2s; }
+  .nav-links a:hover { color: var(--gold); }
 
-        {/* Off-canvas Menu */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <>
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsMenuOpen(false)}
-                className="fixed inset-0 bg-ink/60 z-[60] backdrop-blur-sm"
-              />
-              <motion.div
-                variants={menuVariants}
-                initial="closed"
-                animate="open"
-                exit="closed"
-                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                className="fixed top-0 left-0 bottom-0 w-[85%] max-w-[350px] bg-canvas border-r-2 border-ink z-[70] p-10 flex flex-col gap-10 shadow-[10px_0_0_var(--color-mustard)]"
-              >
-                <button 
-                  onClick={() => setIsMenuOpen(false)}
-                  className="self-end p-1 hover:text-terracotta transition-colors"
-                >
-                  <X size={32} />
-                </button>
-                
-                <div className="flex flex-col gap-6">
-                  {[
-                    { key: 'philosophy', id: '#philosophy' },
-                    { key: 'services', id: '#services' },
-                    { key: 'portfolio', id: '#portfolio' },
-                    { key: 'process', id: '#process' },
-                    { key: 'tech', id: '#tech' },
-                    { key: 'trust', id: '#trust' },
-                    { key: 'faq', id: '#faq' },
-                  ].map((item) => (
-                    <a 
-                      key={item.id}
-                      href={item.id}
-                      onClick={() => setIsMenuOpen(false)}
-                      className="text-2xl font-bold text-indigo hover:text-terracotta hover:translate-x-2 transition-all"
-                    >
-                      {t.nav[item.key as keyof typeof t.nav]}
-                    </a>
-                  ))}
-                  <a 
-                    href="#contact"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="mt-4 inline-block bg-terracotta text-canvas px-6 py-4 border-2 border-ink shadow-heritage text-center font-bold"
-                  >
-                    {t.nav.contact}
-                  </a>
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+  .nav-cta {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--navy) !important;
+    padding: 9px 22px;
+    border-radius: 6px;
+    font-weight: 600 !important;
+    transition: opacity .2s !important;
+  }
+  .nav-cta:hover { opacity: 0.88; }
 
-        <main>
-          {/* Hero Section */}
-          <section className="grid lg:grid-cols-2 border-b-2 border-ink">
-            <div className="p-8 md:p-12 lg:p-20 border-r-0 lg:border-r-2 border-ink flex flex-col justify-center">
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="inline-flex items-center gap-3 px-4 py-1.5 border border-ink/20 rounded-full bg-mustard/10 w-fit mb-8 font-tech text-[10px] sm:text-xs uppercase tracking-widest font-bold"
-              >
-                <span className="w-2 h-2 bg-terracotta rounded-full animate-pulse" />
-                {t.hero.badge}
-              </motion.div>
-              
-              <AnimatePresence mode="wait">
-                <motion.h1 
-                  key={lang}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.02 }}
-                  className="text-[2.8rem] sm:text-[4rem] lg:text-[4.5rem] font-bold leading-[1.1] text-indigo mb-6"
-                >
-                  {t.hero.title}
-                </motion.h1>
-              </AnimatePresence>
+  /* ── HERO ── */
+  #hero {
+    min-height: 100vh;
+    background: var(--navy);
+    display: flex; align-items: center;
+    position: relative; overflow: hidden;
+    padding-top: 72px;
+  }
 
-              <p className="text-lg md:text-xl text-ink/80 max-w-lg mb-10 leading-relaxed font-serif">
-                {t.hero.description}
-              </p>
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 80% at 65% 50%, rgba(200,168,75,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 60% at 20% 80%, rgba(21,45,94,0.8) 0%, transparent 60%),
+      url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1600&q=80') center/cover no-repeat;
+    opacity: 0.35;
+  }
 
-              <a 
-                href="#contact"
-                className="w-fit bg-terracotta text-canvas border-2 border-ink px-8 py-4 text-lg font-bold shadow-heritage hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[9px_9px_0px_var(--color-ink)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all duration-200"
-              >
-                {t.hero.cta}
-              </a>
-            </div>
+  .hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(105deg, rgba(10,31,68,0.97) 45%, rgba(10,31,68,0.5) 100%);
+  }
 
-            <div className="p-10 md:p-20 bg-[radial-gradient(var(--color-terracotta)_1px,transparent_1px)] bg-[length:25px_25px] flex items-center justify-center overflow-hidden">
-              <motion.div 
-                whileHover={{ y: -5, scale: 1.02 }}
-                initial={{ opacity: 0, rotate: -5 }}
-                animate={{ opacity: 1, rotate: 0 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="relative w-full max-w-[400px] aspect-[4/5.5] bg-mustard border-2 border-ink rounded-[200px_200px_0_0] shadow-heritage flex flex-col items-center justify-center p-10 text-center group"
-              >
-                <div className="relative z-10 text-indigo flex flex-col items-center gap-2">
-                  <div className="text-5xl md:text-6xl font-bold">{t.hero.archTitle.split('+')[0]}</div>
-                  <div className="text-6xl font-bold text-terracotta -my-4">+</div>
-                  <div className="text-4xl md:text-5xl font-bold">{t.hero.archTitle.split('+')[1]}</div>
-                  
-                  <div className="mt-10 pt-4 border-t-2 border-indigo w-full font-tech uppercase tracking-widest text-sm font-bold">
-                    {t.hero.subTitle}
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </section>
+  .hero-deco {
+    position: absolute; right: 5%; top: 50%; transform: translateY(-50%);
+    width: 520px; height: 520px; border-radius: 50%;
+    border: 1px solid rgba(200,168,75,0.12);
+    animation: pulse-ring 4s ease-in-out infinite;
+  }
+  .hero-deco::before {
+    content: ''; position: absolute; inset: 40px;
+    border-radius: 50%; border: 1px solid rgba(200,168,75,0.18);
+    animation: pulse-ring 4s ease-in-out infinite .5s;
+  }
+  .hero-deco::after {
+    content: ''; position: absolute; inset: 90px;
+    border-radius: 50%; border: 1px solid rgba(200,168,75,0.25);
+    animation: pulse-ring 4s ease-in-out infinite 1s;
+  }
 
-          {/* Marquee */}
-          <div className="bg-ink text-canvas py-6 overflow-hidden border-b-2 border-ink">
-            <div className="flex gap-10 whitespace-nowrap animate-marquee">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex items-center gap-10 text-lg sm:text-xl font-tech font-bold uppercase tracking-wider">
-                  <span>{t.marquee}</span>
-                  <span className="text-mustard">✽</span>
-                </div>
-              ))}
-            </div>
-          </div>
+  @keyframes pulse-ring {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+  }
 
-          {/* Philosophy Section */}
-          <section id="philosophy" className="grid lg:grid-cols-2 border-b-2 border-ink overflow-hidden">
-            <div className="p-10 lg:p-20 bg-mustard border-r-0 lg:border-r-2 border-ink flex flex-col justify-center group">
-              <span className="text-8xl text-terracotta font-tech leading-none -mb-6 group-hover:-translate-y-2 group-hover:-rotate-12 transition-transform duration-500 inline-block">❝</span>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-indigo leading-tight">
-                {t.philosophy.quote}
-              </h2>
-            </div>
-            <div className="p-10 lg:p-20 bg-indigo text-canvas flex flex-col justify-center">
-              <h3 className="text-3xl font-bold text-mustard mb-8">{t.philosophy.title}</h3>
-              <p className="text-xl leading-relaxed opacity-90 font-serif">
-                {t.philosophy.text}
-              </p>
-            </div>
-          </section>
+  .hero-content {
+    position: relative; z-index: 2;
+    padding: 0 5%;
+    max-width: 680px;
+    animation: fadeUp .9s ease both;
+  }
 
-          {/* Services Bureau */}
-          <section id="services" className="p-8 md:p-20">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-indigo leading-[1.1]">
-                {t.services.title}
-              </h2>
-              <div className="font-tech text-sm uppercase font-bold border border-ink py-2 px-6 rounded-full w-fit">
-                Core Disciplines
-              </div>
-            </div>
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {t.services.items.map((item, idx) => (
-                <motion.div 
-                  key={idx}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1, duration: 0.5 }}
-                  whileHover={{ y: -8, scale: 1.01 }}
-                  className="flex flex-col border-2 border-ink bg-canvas shadow-heritage hover:shadow-heritage-terracotta transition-all group"
-                >
-                  <div className="p-10 border-b-2 border-ink flex-grow">
-                    <div className="text-5xl text-terracotta mb-6 group-hover:scale-125 group-hover:rotate-12 transition-transform duration-300">
-                      {idx === 0 ? <Layers size={48} /> : idx === 1 ? <Briefcase size={48} /> : <TrendingUp size={48} />}
-                    </div>
-                    <h3 className="text-3xl md:text-4xl font-bold text-indigo mb-4">{item.title}</h3>
-                    <p className="text-lg text-ink/80 leading-relaxed">{item.desc}</p>
-                  </div>
-                  <div className="bg-mustard p-4 px-8 flex justify-between font-tech text-xs font-bold uppercase tracking-widest text-ink">
-                    <span>{item.tag}</span>
-                    <span>{formatDigit(idx + 1, lang).padStart(2, formatDigit(0, lang))}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(200,168,75,0.12);
+    border: 1px solid rgba(200,168,75,0.3);
+    color: var(--gold);
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 6px 16px; border-radius: 100px;
+    margin-bottom: 28px;
+  }
 
-          {/* Portfolio Section */}
-          <section id="portfolio" className="p-8 md:p-20 bg-ink text-canvas border-y-2 border-ink">
-            <div className="border-b-2 border-canvas pb-6 mb-12">
-              <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-mustard">
-                {t.portfolio.title}
-              </h2>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {t.portfolio.items.map((item, idx) => (
-                <motion.div 
-                  key={idx}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="border-2 border-canvas p-6 hover:bg-canvas hover:text-ink transition-all group"
-                >
-                  <div className="aspect-video bg-indigo border-2 border-canvas mb-6 flex items-center justify-center font-tech font-bold tracking-widest text-canvas group-hover:border-ink">
-                    {item.tag}
-                  </div>
-                  <h3 className="text-2xl font-bold mb-3">{item.title}</h3>
-                  <p className="opacity-70 group-hover:opacity-100 transition-opacity">{item.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </section>
+  .hero-badge span { width: 6px; height: 6px; background: var(--gold); border-radius: 50%; animation: blink 1.5s ease infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-          {/* Process Section */}
-          <section id="process" className="p-8 md:p-20 border-b-2 border-ink">
-            <h2 className="text-4xl md:text-5xl font-bold text-indigo text-center mb-16">
-              {t.process.title}
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-              {t.process.steps.map((step, idx) => (
-                <motion.div 
-                  key={idx} 
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="group p-8 border-2 border-ink bg-[#FFFBF0] shadow-heritage-mustard hover:shadow-heritage-terracotta hover:-translate-y-2 transition-all"
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <span className="text-5xl font-bold text-terracotta/40 group-hover:text-terracotta transition-colors">{formatDigit(idx + 1, lang).padStart(2, formatDigit(0, lang))}</span>
-                    <div className="text-indigo group-hover:scale-110 transition-transform">
-                      {idx === 0 ? <Search /> : idx === 1 ? <CircleDollarSign /> : idx === 2 ? <ShieldCheck /> : <Rocket />}
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-bold text-indigo mb-4">{step.title}</h3>
-                  <p className="text-ink/80 leading-relaxed sm:text-sm md:text-base">{step.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </section>
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.6rem, 5vw, 4.2rem);
+    font-weight: 900; line-height: 1.1;
+    color: var(--white);
+    margin-bottom: 24px;
+  }
 
-          {/* Tech Arsenal */}
-          <section id="tech" className="py-20 px-8 bg-indigo text-canvas text-center border-b-2 border-ink">
-            <h2 className="text-3xl md:text-4xl font-bold text-mustard mb-12">{t.tech}</h2>
-            <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
-              {['React.js', 'Next.js', 'TypeScript', 'Node.js', 'PostgreSQL', 'Tailwind CSS', 'Figma', 'Cloud Architecture', 'Docker', 'Vercel'].map((tech) => (
-                <div 
-                  key={tech} 
-                  className="px-6 py-3 border-2 border-dashed border-mustard font-tech text-lg font-bold uppercase tracking-widest hover:bg-mustard hover:text-ink hover:border-solid hover:scale-110 hover:rotate-2 transition-all cursor-default"
-                >
-                  {tech}
-                </div>
-              ))}
-            </div>
-          </section>
+  .hero-title em {
+    font-style: normal;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 
-          {/* Trust Section */}
-          <section id="trust" className="p-8 md:p-20 bg-[#FFFBF0] border-b-2 border-ink">
-            <motion.h2 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-4xl md:text-5xl font-bold text-indigo text-center mb-16"
-            >
-              {t.trust.title}
-            </motion.h2>
-            <div className="grid sm:grid-cols-2 gap-8 max-w-5xl mx-auto">
-              {t.trust.items.map((item, idx) => (
-                <motion.div 
-                  key={idx} 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="p-8 border-2 border-ink bg-canvas shadow-heritage-mustard hover:shadow-heritage-terracotta transition-all"
-                >
-                  <div className="text-3xl font-bold text-terracotta mb-5 inline-block border-b-4 border-indigo pb-1 font-tech">
-                    {formatDigit(idx + 1, lang).padStart(2, formatDigit(0, lang))}
-                  </div>
-                  <h3 className="text-xl font-bold text-ink mb-3">{item.title}</h3>
-                  <p className="text-ink/70 leading-relaxed">{item.desc}</p>
-                </motion.div>
-              ))}
-            </div>
-          </section>
+  .hero-sub {
+    font-size: 1.1rem; color: rgba(255,255,255,0.72);
+    line-height: 1.7; max-width: 520px;
+    margin-bottom: 40px;
+  }
 
-          {/* FAQ Section */}
-          <section id="faq" className="p-8 md:p-20 border-b-2 border-ink bg-canvas">
-            <h2 className="text-4xl md:text-5xl font-bold text-ink mb-12">{t.faq.title}</h2>
-            <div className="flex flex-col gap-4 max-w-3xl">
-              {t.faq.items.map((item, idx) => (
-                <details 
-                  key={idx} 
-                  className="group border-2 border-ink p-6 bg-[#FFFBF0] open:bg-mustard transition-all cursor-pointer"
-                >
-                  <summary className="flex items-center justify-between font-bold text-xl list-none outline-none">
-                    <span>{item.q}</span>
-                    <span className="text-2xl font-tech group-open:rotate-45 transition-transform duration-300">
-                      {idx % 2 === 0 ? '+' : '+'}
-                    </span>
-                  </summary>
-                  <div className="mt-4 pt-4 border-t border-ink text-lg opacity-90 leading-relaxed">
-                    {item.a}
-                  </div>
-                </details>
-              ))}
-            </div>
-          </section>
+  .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; }
 
-          {/* Contact Section */}
-          <section id="contact" className="p-8 md:p-20 bg-canvas">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold text-indigo mb-4">{t.contact.title}</h2>
-              <p className="text-xl text-ink/70">{t.contact.subtitle}</p>
-            </div>
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--navy);
+    padding: 14px 32px; border-radius: 8px;
+    font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em;
+    text-decoration: none; border: none; cursor: pointer;
+    transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 8px 24px rgba(200,168,75,0.35);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(200,168,75,0.45); }
 
-            <div className="flex flex-col md:flex-row gap-6 max-w-screen-md mx-auto mb-12">
-              <div className="flex-1 p-6 border-2 border-ink bg-canvas shadow-heritage-terracotta flex items-center gap-4 group hover:-translate-y-1 transition-transform">
-                <Shield className="text-terracotta" size={36} />
-                <div>
-                  <span className="block text-[10px] font-tech font-bold text-indigo uppercase tracking-wider mb-1">{t.contact.msme}</span>
-                  <span className="font-bold text-ink">UDYAM-WB-18-0186128</span>
-                </div>
-              </div>
-              <div className="flex-1 p-6 border-2 border-ink bg-canvas shadow-heritage flex items-center gap-4 group hover:-translate-y-1 transition-transform">
-                <FileText className="text-indigo" size={36} />
-                <div>
-                  <span className="block text-[10px] font-tech font-bold text-indigo uppercase tracking-wider mb-1">{t.contact.gst}</span>
-                  <span className="font-bold text-ink">19BDYPL9210K1ZR</span>
-                </div>
-              </div>
-            </div>
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: transparent;
+    color: var(--white);
+    padding: 14px 32px; border-radius: 8px;
+    font-weight: 600; font-size: 0.95rem;
+    text-decoration: none; cursor: pointer;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    transition: border-color .2s, background .2s;
+  }
+  .btn-outline:hover { border-color: var(--gold); background: rgba(200,168,75,0.08); }
 
-            <form 
-              className="max-w-screen-md mx-auto p-8 md:p-12 border-2 border-ink bg-[#FFFBF0] shadow-heritage-doubled"
-              onSubmit={(e) => {
-                e.preventDefault();
-                alert('Success! Your message has been sent to Quantum Pixel.');
-              }}
-            >
-              <div className="grid md:grid-cols-2 gap-8 mb-8">
-                <div className="flex flex-col gap-2">
-                  <label className="font-tech text-xs font-bold text-indigo uppercase tracking-widest">{t.contact.labels.name}</label>
-                  <input required type="text" className="bg-transparent border-2 border-ink p-4 font-serif outline-none focus:bg-canvas focus:shadow-[4px_4px_0px_var(--color-terracotta)] transition-all" />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="font-tech text-xs font-bold text-indigo uppercase tracking-widest">{t.contact.labels.email}</label>
-                  <input required type="email" className="bg-transparent border-2 border-ink p-4 font-serif outline-none focus:bg-canvas focus:shadow-[4px_4px_0px_var(--color-terracotta)] transition-all" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 mb-10">
-                <label className="font-tech text-xs font-bold text-indigo uppercase tracking-widest">{t.contact.labels.message}</label>
-                <textarea required rows={5} className="bg-transparent border-2 border-ink p-4 font-serif outline-none focus:bg-canvas focus:shadow-[4px_4px_0px_var(--color-terracotta)] transition-all resize-none" />
-              </div>
-              <button type="submit" className="w-full bg-terracotta text-canvas border-2 border-ink p-6 font-bold uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all shadow-[4px_4px_0px_var(--color-ink)] flex items-center justify-center gap-3">
-                <span className="text-lg">{t.contact.labels.submit}</span>
-                <ArrowUpRight strokeWidth={3} />
-              </button>
-            </form>
-          </section>
-        </main>
+  .hero-stats {
+    position: absolute; bottom: 48px; left: 5%;
+    display: flex; gap: 48px; z-index: 2;
+    animation: fadeUp .9s ease .3s both;
+  }
 
-        {/* Footer */}
-        <footer className="py-20 px-8 border-t-2 border-ink bg-indigo text-canvas text-center">
-          <div className="text-4xl font-bold mb-6">
-            <span className="text-canvas">{lang === 'bn' ? 'কোয়ান্টাম' : lang === 'hi' ? 'क्वांटम' : 'Quantum'}</span>
-            <span className="text-mustard font-tech ml-2">Pixel</span>
-          </div>
+  .stat { }
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 900;
+    color: var(--gold); line-height: 1;
+  }
+  .stat-label { font-size: 0.8rem; color: rgba(255,255,255,0.55); letter-spacing: 0.06em; margin-top: 4px; }
 
-          <div className="flex flex-wrap justify-center gap-4 mb-10 opacity-80">
-            <div className="px-3 py-1 border border-canvas/20 rounded font-tech text-[10px] uppercase tracking-wider">
-              {lang === 'bn' ? 'ইউডিয়াম' : lang === 'hi' ? 'उद्यम' : 'UDYAM'}: WB-18-0186128
-            </div>
-            <div className="px-3 py-1 border border-canvas/20 rounded font-tech text-[10px] uppercase tracking-wider">
-              {lang === 'bn' ? 'জিএসটি' : lang === 'hi' ? 'जीএসটি' : 'GST'}: 19BDYPL9210K1ZR
-            </div>
-          </div>
+  /* ── SECTION BASE ── */
+  section { padding: 96px 5%; }
 
-          <div className="max-w-2xl mx-auto mb-10 opacity-70 font-serif leading-relaxed italic">
-            "{t.philosophy.quote}"
-          </div>
-          <p className="font-tech text-xs uppercase tracking-[0.2em] opacity-60">
-            © 2026 The Digital Artisans of Bengal.
-          </p>
-        </footer>
+  .section-label {
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 14px;
+  }
 
-        {/* WhatsApp Float */}
-        <a 
-          href="https://wa.me/911234567890" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="fixed bottom-8 right-8 w-16 h-16 bg-[#25D366] text-white rounded-full flex items-center justify-center border-2 border-ink shadow-heritage z-[100] hover:-translate-y-2 hover:shadow-[8px_8px_0px_var(--color-ink)] transition-all"
-        >
-          <svg viewBox="0 0 24 24" className="w-9 h-9 fill-current">
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
-          </svg>
-        </a>
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+    font-weight: 700; color: var(--navy); line-height: 1.2;
+  }
 
+  .section-sub {
+    font-size: 1rem; color: var(--gray); line-height: 1.7;
+    max-width: 560px; margin-top: 16px;
+  }
+
+  /* ── ABOUT ── */
+  #about { background: var(--off-white); }
+
+  .about-inner {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+  }
+
+  .about-image-wrap {
+    position: relative;
+  }
+
+  .about-img {
+    width: 100%; aspect-ratio: 4/5;
+    object-fit: cover; border-radius: 16px;
+    display: block;
+  }
+
+  .about-img-placeholder {
+    width: 100%; aspect-ratio: 4/5;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+  }
+
+  .about-img-placeholder::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url('https://images.unsplash.com/photo-1509062522246-3755977927d7?w=800&q=80') center/cover;
+    opacity: 0.6;
+  }
+
+  .about-badge {
+    position: absolute; bottom: -24px; right: -24px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--navy);
+    padding: 24px 28px; border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 16px 40px rgba(200,168,75,0.3);
+  }
+  .about-badge-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.4rem; font-weight: 900; display: block; line-height: 1;
+  }
+  .about-badge-text { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em; display: block; margin-top: 4px; }
+
+  .about-values { margin-top: 36px; display: flex; flex-direction: column; gap: 16px; }
+
+  .value-item {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 18px 20px; border-radius: 12px;
+    background: var(--white);
+    border: 1px solid rgba(10,31,68,0.07);
+    transition: border-color .2s, transform .2s;
+  }
+  .value-item:hover { border-color: var(--gold); transform: translateX(4px); }
+
+  .value-icon {
+    width: 40px; height: 40px; flex-shrink: 0;
+    background: var(--gold-pale);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .value-info h4 { font-weight: 600; font-size: 0.95rem; color: var(--navy); margin-bottom: 4px; }
+  .value-info p { font-size: 0.85rem; color: var(--gray); line-height: 1.5; }
+
+  .founder-note {
+    margin-top: 32px; padding: 20px 24px;
+    background: var(--navy);
+    border-radius: 12px; color: var(--white);
+  }
+  .founder-note p { font-size: 0.85rem; color: rgba(255,255,255,0.7); font-style: italic; line-height: 1.6; }
+  .founder-name { margin-top: 10px; font-weight: 700; font-size: 0.9rem; color: var(--gold); }
+
+  /* ── ACADEMICS ── */
+  #academics { background: var(--white); }
+
+  .academics-header { text-align: center; max-width: 600px; margin: 0 auto 56px; }
+  .academics-header .section-sub { margin: 16px auto 0; }
+
+  .programs-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+  }
+
+  .program-card {
+    padding: 36px 28px;
+    border-radius: 16px;
+    border: 1.5px solid rgba(10,31,68,0.08);
+    background: var(--white);
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+    cursor: default; position: relative; overflow: hidden;
+  }
+  .program-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-light));
+    opacity: 0; transition: opacity .25s;
+  }
+  .program-card:hover { transform: translateY(-6px); box-shadow: 0 20px 48px rgba(10,31,68,0.1); border-color: transparent; }
+  .program-card:hover::before { opacity: 1; }
+
+  .program-icon {
+    width: 56px; height: 56px;
+    background: var(--gold-pale); border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; margin-bottom: 20px;
+  }
+
+  .program-title { font-family: 'Playfair Display', serif; font-size: 1.25rem; font-weight: 700; color: var(--navy); margin-bottom: 10px; }
+  .program-desc { font-size: 0.88rem; color: var(--gray); line-height: 1.65; margin-bottom: 16px; }
+  .program-link { font-size: 0.85rem; font-weight: 600; color: var(--gold); text-decoration: none; letter-spacing: 0.04em; }
+  .program-link:hover { text-decoration: underline; }
+
+  /* ── TESTIMONIALS ── */
+  #testimonials {
+    background: var(--navy);
+    position: relative; overflow: hidden;
+  }
+
+  #testimonials::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(200,168,75,0.07) 0%, transparent 70%);
+  }
+
+  .testimonials-header { text-align: center; margin-bottom: 56px; }
+  .testimonials-header .section-label { color: var(--gold-light); }
+  .testimonials-header .section-title { color: var(--white); }
+
+  .testimonials-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+    position: relative; z-index: 1;
+  }
+
+  .testimonial-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(200,168,75,0.15);
+    padding: 32px 28px; border-radius: 16px;
+    transition: background .25s, border-color .25s;
+  }
+  .testimonial-card:hover { background: rgba(255,255,255,0.09); border-color: rgba(200,168,75,0.35); }
+
+  .quote-mark {
+    font-family: 'Playfair Display', serif;
+    font-size: 5rem; line-height: .7;
+    color: var(--gold); opacity: 0.4;
+    margin-bottom: 16px;
+  }
+
+  .testimonial-text { font-size: 0.93rem; color: rgba(255,255,255,0.8); line-height: 1.75; margin-bottom: 24px; font-style: italic; }
+
+  .testimonial-author { display: flex; align-items: center; gap: 14px; }
+  .author-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif; font-weight: 700; font-size: 1.1rem; color: var(--navy);
+  }
+  .author-name { font-weight: 600; color: var(--white); font-size: 0.9rem; }
+  .author-role { font-size: 0.78rem; color: var(--gold-light); opacity: 0.75; margin-top: 2px; }
+
+  /* ── NEWS & EVENTS ── */
+  #news { background: var(--off-white); }
+
+  .news-inner {
+    display: grid; grid-template-columns: 1.4fr 1fr; gap: 64px; align-items: start;
+  }
+
+  .news-list { display: flex; flex-direction: column; gap: 24px; }
+
+  .news-card {
+    background: var(--white); border-radius: 14px;
+    padding: 24px 24px;
+    border: 1px solid rgba(10,31,68,0.07);
+    display: flex; gap: 20px; align-items: flex-start;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .news-card:hover { transform: translateX(6px); box-shadow: 0 8px 28px rgba(10,31,68,0.08); }
+
+  .news-date-box {
+    flex-shrink: 0; width: 52px; text-align: center;
+    background: var(--navy); color: var(--white);
+    border-radius: 10px; padding: 10px 6px;
+  }
+  .news-date-box .day { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 900; line-height: 1; }
+  .news-date-box .month { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-top: 3px; display: block; }
+
+  .news-info { }
+  .news-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); background: var(--gold-pale); padding: 3px 10px; border-radius: 100px; margin-bottom: 8px; }
+  .news-title { font-weight: 600; color: var(--navy); font-size: 0.95rem; margin-bottom: 6px; line-height: 1.4; }
+  .news-desc { font-size: 0.83rem; color: var(--gray); line-height: 1.55; }
+
+  .events-panel {
+    background: var(--navy);
+    border-radius: 16px; padding: 36px 28px; color: var(--white);
+  }
+
+  .events-panel h3 { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--white); margin-bottom: 24px; }
+
+  .event-item {
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .event-item:last-child { border-bottom: none; }
+  .event-dot { width: 8px; height: 8px; background: var(--gold); border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+  .event-name { font-size: 0.9rem; font-weight: 600; color: var(--white); margin-bottom: 4px; }
+  .event-date { font-size: 0.78rem; color: rgba(255,255,255,0.5); }
+
+  /* ── FOOTER ── */
+  footer {
+    background: #060f24;
+    color: rgba(255,255,255,0.65);
+    padding: 72px 5% 32px;
+  }
+
+  .footer-top {
+    display: grid; grid-template-columns: 1.6fr 1fr 1fr 1.2fr; gap: 48px;
+    padding-bottom: 48px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .footer-brand .school-name { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+  .footer-brand .tagline { font-size: 0.8rem; color: var(--gold); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+  .footer-brand p { font-size: 0.88rem; line-height: 1.7; max-width: 280px; }
+
+  .footer-social { display: flex; gap: 12px; margin-top: 20px; }
+  .social-btn {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; text-decoration: none; color: rgba(255,255,255,0.6);
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .social-btn:hover { background: rgba(200,168,75,0.15); border-color: var(--gold); color: var(--gold); }
+
+  .footer-col h4 { font-weight: 700; color: var(--white); font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 20px; }
+  .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .footer-col ul a { color: rgba(255,255,255,0.55); text-decoration: none; font-size: 0.88rem; transition: color .2s; }
+  .footer-col ul a:hover { color: var(--gold); }
+
+  .footer-newsletter p { font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px; }
+  .newsletter-form { display: flex; flex-direction: column; gap: 10px; }
+  .newsletter-form input {
+    width: 100%; padding: 11px 16px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; color: var(--white);
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+    outline: none; transition: border-color .2s;
+  }
+  .newsletter-form input::placeholder { color: rgba(255,255,255,0.35); }
+  .newsletter-form input:focus { border-color: var(--gold); }
+  .newsletter-form button {
+    width: 100%; padding: 11px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--navy); font-weight: 700; font-size: 0.88rem;
+    border: none; border-radius: 8px; cursor: pointer;
+    transition: opacity .2s;
+  }
+  .newsletter-form button:hover { opacity: 0.88; }
+
+  .footer-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 28px;
+    font-size: 0.8rem; color: rgba(255,255,255,0.3);
+    flex-wrap: wrap; gap: 12px;
+  }
+
+  .footer-bottom a { color: var(--gold); text-decoration: none; }
+  .footer-bottom a:hover { text-decoration: underline; }
+
+  /* ── CONTACT INFO in footer ── */
+  .contact-info { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .contact-row { display: flex; align-items: flex-start; gap: 10px; font-size: 0.84rem; }
+  .contact-row span:first-child { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1024px) {
+    .about-inner { grid-template-columns: 1fr; }
+    .about-image-wrap { display: none; }
+    .programs-grid { grid-template-columns: repeat(2, 1fr); }
+    .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+    .news-inner { grid-template-columns: 1fr; }
+    .footer-top { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 640px) {
+    nav { padding: 0 4%; }
+    .nav-links { display: none; }
+    section { padding: 64px 5%; }
+    .programs-grid { grid-template-columns: 1fr; }
+    .testimonials-grid { grid-template-columns: 1fr; }
+    .footer-top { grid-template-columns: 1fr; }
+    .hero-stats { gap: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">V</div>
+    <div class="nav-logo-text">
+      <span class="school-name">Voice Modern School</span>
+      <span class="school-tag">Excellence in Education</span>
+    </div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#about">About</a></li>
+    <li><a href="#academics">Academics</a></li>
+    <li><a href="#testimonials">Stories</a></li>
+    <li><a href="#news">News</a></li>
+    <li><a href="#footer">Contact</a></li>
+    <li><a href="#" class="nav-cta">Apply Now</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-deco"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span></span>
+      Admissions Open 2025–26
+    </div>
+
+    <h1 class="hero-title">
+      Empowering<br>
+      the <em>Future,</em><br>
+      One Voice at a Time
+    </h1>
+
+    <p class="hero-sub">
+      At Voice Modern School, we nurture curious minds, bold hearts, and responsible citizens — building the leaders of tomorrow through academic excellence and holistic growth.
+    </p>
+
+    <div class="hero-actions">
+      <a href="#" class="btn-primary">
+        ✦ Apply Now
+      </a>
+      <a href="#" class="btn-outline">
+        📅 Book a Tour
+      </a>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num">1,200+</div>
+      <div class="stat-label">Students Enrolled</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">98%</div>
+      <div class="stat-label">Pass Rate</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">50+</div>
+      <div class="stat-label">Expert Educators</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">25+</div>
+      <div class="stat-label">Years of Excellence</div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-inner">
+    <div class="about-image-wrap">
+      <div class="about-img-placeholder"></div>
+      <div class="about-badge">
+        <span class="about-badge-num">A+</span>
+        <span class="about-badge-text">Rated Institution</span>
       </div>
     </div>
-  );
-}
+
+    <div class="about-text">
+      <div class="section-label">Our Story</div>
+      <h2 class="section-title">A Legacy of Learning,<br>A Vision for Tomorrow</h2>
+      <p class="section-sub">
+        Founded on the belief that every child has a unique voice worth nurturing, Voice Modern School has been a cornerstone of educational excellence — cultivating intellect, character, and community since its inception.
+      </p>
+
+      <div class="about-values">
+        <div class="value-item">
+          <div class="value-icon">🎯</div>
+          <div class="value-info">
+            <h4>Academic Excellence</h4>
+            <p>Rigorous curricula designed to challenge and inspire students at every level.</p>
+          </div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon">🤝</div>
+          <div class="value-info">
+            <h4>Community & Inclusion</h4>
+            <p>A welcoming environment where every student feels seen, heard, and valued.</p>
+          </div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon">🌱</div>
+          <div class="value-info">
+            <h4>Holistic Development</h4>
+            <p>Nurturing mind, body, and spirit through academics, arts, and athletics.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="founder-note">
+        <p>"Education is not the filling of a pail, but the lighting of a fire. At Voice Modern School, we ignite that fire in every child."</p>
+        <div class="founder-name">— Nazmul Hasan, Founder & Chairman</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACADEMICS -->
+<section id="academics">
+  <div class="academics-header">
+    <div class="section-label">Academic Programs</div>
+    <h2 class="section-title">World-Class Education<br>Across Every Discipline</h2>
+    <p class="section-sub">Our broad spectrum of programs ensures every student discovers their passion and builds the skills to excel.</p>
+  </div>
+
+  <div class="programs-grid">
+    <div class="program-card">
+      <div class="program-icon">🔬</div>
+      <div class="program-title">STEM & Science</div>
+      <p class="program-desc">Hands-on labs, robotics, and coding clubs bring science, technology, engineering, and mathematics to life with real-world problem solving.</p>
+      <a href="#" class="program-link">Explore Program →</a>
+    </div>
+
+    <div class="program-card">
+      <div class="program-icon">🎨</div>
+      <div class="program-title">Arts & Creative Studies</div>
+      <p class="program-desc">Visual arts, music, drama, and creative writing programs that celebrate imagination and build confidence in self-expression.</p>
+      <a href="#" class="program-link">Explore Program →</a>
+    </div>
+
+    <div class="program-card">
+      <div class="program-icon">⚽</div>
+      <div class="program-title">Athletics & Sports</div>
+      <p class="program-desc">Competitive and recreational sports programs instilling discipline, teamwork, and resilience both on and off the field.</p>
+      <a href="#" class="program-link">Explore Program →</a>
+    </div>
+
+    <div class="program-card">
+      <div class="program-icon">📖</div>
+      <div class="program-title">Humanities & Languages</div>
+      <p class="program-desc">Literature, history, social studies, and multilingual education fostering critical thinking, empathy, and global awareness.</p>
+      <a href="#" class="program-link">Explore Program →</a>
+    </div>
+
+    <div class="program-card">
+      <div class="program-icon">💻</div>
+      <div class="program-title">Digital & Technology</div>
+      <p class="program-desc">Future-ready digital literacy, computer science, and AI fundamentals preparing students for a tech-driven world.</p>
+      <a href="#" class="program-link">Explore Program →</a>
+    </div>
+
+    <div class="program-card">
+      <div class="program-icon">🌍</div>
+      <div class="program-title">Global Citizenship</div>
+      <p class="program-desc">Model United Nations, exchange programs, and environmental studies cultivating responsible, compassionate world citizens.</p>
+      <a href="#" class="program-link">Explore Program →</a>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials">
+  <div class="testimonials-header">
+    <div class="section-label">Success Stories</div>
+    <h2 class="section-title">Words from Our Community</h2>
+  </div>
+
+  <div class="testimonials-grid">
+    <div class="testimonial-card">
+      <div class="quote-mark">"</div>
+      <p class="testimonial-text">Voice Modern School transformed my daughter's confidence. The teachers here don't just teach — they mentor, inspire, and genuinely care about every child's journey.</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">F</div>
+        <div>
+          <div class="author-name">Fatima Rahman</div>
+          <div class="author-role">Parent, Grade 8</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial-card">
+      <div class="quote-mark">"</div>
+      <p class="testimonial-text">I graduated from Voice Modern School three years ago and the foundation it gave me — academically and personally — carried me to university with confidence and purpose.</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">A</div>
+        <div>
+          <div class="author-name">Arif Hossain</div>
+          <div class="author-role">Alumni, Now at BUET</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial-card">
+      <div class="quote-mark">"</div>
+      <p class="testimonial-text">The STEM program here is exceptional. My son built his first working robot in Grade 6. The level of hands-on learning is something truly rare and remarkable.</p>
+      <div class="testimonial-author">
+        <div class="author-avatar">K</div>
+        <div>
+          <div class="author-name">Karim Uddin</div>
+          <div class="author-role">Parent, Grade 6</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEWS & EVENTS -->
+<section id="news">
+  <div class="news-inner">
+    <div>
+      <div class="section-label">Latest Updates</div>
+      <h2 class="section-title">News & Announcements</h2>
+      <p class="section-sub">Stay connected with the latest happenings at Voice Modern School.</p>
+
+      <div class="news-list" style="margin-top: 36px;">
+        <div class="news-card">
+          <div class="news-date-box">
+            <div class="day">05</div>
+            <span class="month">May</span>
+          </div>
+          <div class="news-info">
+            <span class="news-tag">Achievement</span>
+            <div class="news-title">Voice Modern School Wins District Science Olympiad 2025</div>
+            <p class="news-desc">Our STEM students brought home the gold at this year's district-level science olympiad, competing against 40+ schools.</p>
+          </div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-date-box">
+            <div class="day">18</div>
+            <span class="month">May</span>
+          </div>
+          <div class="news-info">
+            <span class="news-tag">Admissions</span>
+            <div class="news-title">Admissions for Session 2025–26 Now Open</div>
+            <p class="news-desc">Applications are now being accepted for all grades. Early applicants receive priority enrollment and scholarship consideration.</p>
+          </div>
+        </div>
+
+        <div class="news-card">
+          <div class="news-date-box">
+            <div class="day">10</div>
+            <span class="month">Jun</span>
+          </div>
+          <div class="news-info">
+            <span class="news-tag">Event</span>
+            <div class="news-title">Annual Cultural Festival — "Voices Unite 2025"</div>
+            <p class="news-desc">Join us for a day of performances, art exhibitions, and community celebration showcasing our students' incredible talents.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="events-panel">
+      <h3>📅 Upcoming Events</h3>
+
+      <div class="event-item">
+        <div class="event-dot"></div>
+        <div>
+          <div class="event-name">Parent-Teacher Conference</div>
+          <div class="event-date">April 30, 2025 · 9:00 AM – 3:00 PM</div>
+        </div>
+      </div>
+
+      <div class="event-item">
+        <div class="event-dot"></div>
+        <div>
+          <div class="event-name">Mid-Year Examinations Begin</div>
+          <div class="event-date">May 12–22, 2025 · All Grades</div>
+        </div>
+      </div>
+
+      <div class="event-item">
+        <div class="event-dot"></div>
+        <div>
+          <div class="event-name">Sports Day & Athletics Meet</div>
+          <div class="event-date">May 28, 2025 · School Grounds</div>
+        </div>
+      </div>
+
+      <div class="event-item">
+        <div class="event-dot"></div>
+        <div>
+          <div class="event-name">Annual Cultural Festival</div>
+          <div class="event-date">June 10, 2025 · Main Auditorium</div>
+        </div>
+      </div>
+
+      <div class="event-item">
+        <div class="event-dot"></div>
+        <div>
+          <div class="event-name">Graduation Ceremony 2025</div>
+          <div class="event-date">June 25, 2025 · 10:00 AM</div>
+        </div>
+      </div>
+
+      <div class="event-item">
+        <div class="event-dot"></div>
+        <div>
+          <div class="event-name">New Session Orientation Day</div>
+          <div class="event-date">July 1, 2025 · New Students Welcome</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer id="footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="school-name">Voice Modern School</div>
+      <div class="tagline">Est. by Nazmul Hasan</div>
+      <p>Nurturing excellence, inspiring purpose, and building the leaders of tomorrow — one student at a time.</p>
+
+      <div class="contact-info">
+        <div class="contact-row">
+          <span>📍</span>
+          <span>123 Education Avenue, Dhaka, Bangladesh 1200</span>
+        </div>
+        <div class="contact-row">
+          <span>📞</span>
+          <span>+880 1700-000000</span>
+        </div>
+        <div class="contact-row">
+          <span>✉️</span>
+          <span>info@voicemodernschool.edu.bd</span>
+        </div>
+      </div>
+
+      <div class="footer-social">
+        <a href="#" class="social-btn">f</a>
+        <a href="#" class="social-btn">𝕏</a>
+        <a href="#" class="social-btn">in</a>
+        <a href="#" class="social-btn">▶</a>
+      </div>
+    </div>
+
+    <div class="footer-col">
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="#about">About Us</a></li>
+        <li><a href="#academics">Academic Programs</a></li>
+        <li><a href="#testimonials">Alumni Stories</a></li>
+        <li><a href="#news">News & Events</a></li>
+        <li><a href="#">Admissions</a></li>
+        <li><a href="#">Gallery</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-col">
+      <h4>Resources</h4>
+      <ul>
+        <li><a href="#">Student Portal</a></li>
+        <li><a href="#">Parent Portal</a></li>
+        <li><a href="#">Academic Calendar</a></li>
+        <li><a href="#">Fee Structure</a></li>
+        <li><a href="#">Scholarships</a></li>
+        <li><a href="#">Careers</a></li>
+      </ul>
+    </div>
+
+    <div class="footer-newsletter footer-col">
+      <h4>Newsletter</h4>
+      <p>Subscribe for school updates, events, and achievements delivered to your inbox.</p>
+      <div class="newsletter-form">
+        <input type="email" placeholder="Your email address">
+        <button type="button">Subscribe →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <span>© 2025 Voice Modern School. Founded by <a href="#">Nazmul Hasan</a>. All rights reserved.</span>
+    <span>
+      <a href="#">Privacy Policy</a> &nbsp;·&nbsp;
+      <a href="#">Terms of Use</a> &nbsp;·&nbsp;
+      <a href="#">Sitemap</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+  // Smooth nav highlight on scroll
+  const sections = document.querySelectorAll('section[id], footer[id]');
+  const navLinks = document.querySelectorAll('.nav-links a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.style.color = link.getAttribute('href') === `#${entry.target.id}` ? 'var(--gold)' : '';
+        });
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(s => observer.observe(s));
+
+  // Newsletter button feedback
+  document.querySelector('.newsletter-form button').addEventListener('click', function() {
+    const input = this.previousElementSibling;
+    if (input.value && input.value.includes('@')) {
+      this.textContent = '✓ Subscribed!';
+      this.style.background = 'linear-gradient(135deg, #4ade80, #22c55e)';
+      input.value = '';
+      setTimeout(() => {
+        this.textContent = 'Subscribe →';
+        this.style.background = '';
+      }, 3000);
+    } else {
+      input.style.borderColor = '#ef4444';
+      input.placeholder = 'Please enter a valid email';
+      setTimeout(() => {
+        input.style.borderColor = '';
+        input.placeholder = 'Your email address';
+      }, 2000);
+    }
+  });
+</script>
+</body>
+</html>
